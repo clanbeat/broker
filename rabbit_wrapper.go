@@ -11,6 +11,7 @@ type (
 
 	Channel struct {
 		amqpChannel *amqp.Channel
+		Exchange string
 	}
 )
 
@@ -48,7 +49,6 @@ func (ch *Channel) ExchangeDeclare(exchangeName string) error {
 	)
 
 	if err != nil {
-		log.Println("error setting up exchange")
 		return err
 	}
 	ch.Exchange = exchangeName

@@ -3,7 +3,6 @@ package broker
 import (
 	"github.com/streadway/amqp"
 	"github.com/satori/go.uuid"
-	"log"
 	"time"
 )
 
