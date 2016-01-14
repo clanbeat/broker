@@ -10,6 +10,8 @@ Clone the repository to your go workspace
 
 ## Example
 
+Sending data to a topic exchange
+
 ```go
   package main
 
