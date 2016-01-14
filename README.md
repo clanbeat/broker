@@ -38,7 +38,7 @@ Sending data to a topic exchange
   		log.Fatal(err)
   	}
 
-    message := map[string]int{"from": "someone", "content": "Hello!"}
+    message := map[string]string{"from": "someone", "content": "Hello!"}
 
     if err := messageChannel.Publish("model.event", json.Marshal(message)); err != nil {
       log.Println(err)
