@@ -1,7 +1,7 @@
 package broker
 
 import (
-	"streadway/amqp"
+	"github.com/streadway/amqp"
 )
 
 func (ch *Channel) BindQueue(exchangeName, queueName, routingKey string) (amqp.Queue, error) {
