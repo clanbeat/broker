@@ -8,7 +8,7 @@ import (
 )
 
 func (ch *Channel) Publish(routingKey string, body []byte) error {
-	if ch.amqpChannel != nil {
+	if ch.amqpChannel == nil {
 		return errors.New("rabbitmq connection missing")
 	}
 	return ch.amqpChannel.Publish(
