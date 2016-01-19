@@ -4,9 +4,13 @@ import (
 	"github.com/streadway/amqp"
 	"github.com/satori/go.uuid"
 	"time"
+	"errors"
 )
 
 func (ch *Channel) Publish(routingKey string, body []byte) error {
+	if ch.amqpChannel != nil {
+		return errors.New("rabbitmq connection missing")
+	}
 	return ch.amqpChannel.Publish(
 		ch.Exchange, // exchange
 		routingKey,  // routing key

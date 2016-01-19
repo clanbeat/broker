@@ -2,11 +2,17 @@ package broker
 
 import (
 	"github.com/streadway/amqp"
+	"errors"
 )
 
 func (ch *Channel) BindQueue(exchangeName, queueName, routingKey string) (amqp.Queue, error) {
 	var err error
 	var q amqp.Queue
+
+	if ch.amqpChannel == nil {
+		return q, errors.New("rabbitmq connection missing")
+	}
+
 	err = ch.ExchangeDeclare(exchangeName)
 	if err != nil {
 		return q, err
@@ -36,6 +42,10 @@ func (ch *Channel) BindQueue(exchangeName, queueName, routingKey string) (amqp.Q
 }
 
 func (ch *Channel) Consume(queueName string) (<-chan amqp.Delivery, error) {
+	if ch.amqpChannel == nil {
+		return nil, errors.New("rabbitmq connection missing")
+	}
+
 	return ch.amqpChannel.Consume(
 		queueName, // queue
 		"",        // consumer
