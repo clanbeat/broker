@@ -45,7 +45,29 @@ func (ch *Channel) Consume(queueName string) (<-chan amqp.Delivery, error) {
 	if ch.amqpChannel == nil {
 		return nil, errors.New("rabbitmq connection missing")
 	}
+	return ch.startConsume(queueName)
+}
 
+func (ch *Channel) ConsumeMessages(queueName string) (<-chan Delivery, error) {
+	if ch.amqpChannel == nil {
+		return nil, errors.New("rabbitmq connection missing")
+	}
+
+	messages, err := ch.startConsume(queueName)
+	if err != nil {
+		return nil, err
+	}
+
+	d := make(chan Delivery)
+	for m := range messages {
+		logDelivery(m)
+	 	d <- *NewDelivery(m)
+	}
+
+	return d, nil
+}
+
+func (ch *Channel)startConsume(queueName string)(<-chan amqp.Delivery, error){
 	return ch.amqpChannel.Consume(
 		queueName, // queue
 		"",        // consumer
