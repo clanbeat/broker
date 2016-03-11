@@ -1,11 +1,11 @@
 package broker
 
 import (
-	"github.com/streadway/amqp"
-	"github.com/satori/go.uuid"
-	"time"
 	"errors"
+	"github.com/satori/go.uuid"
+	"github.com/streadway/amqp"
 	"strconv"
+	"time"
 )
 
 func (ch *Channel) Publish(routingKey string, body []byte) error {
@@ -42,7 +42,7 @@ func (ch *Channel) PublishWithUser(routingKey string, userID int64, body []byte)
 			DeliveryMode: amqp.Persistent,
 			MessageId:    uuid.NewV4().String(),
 			Timestamp:    time.Now(),
-			UserId: strconv.FormatInt(userID, 10),
+			UserId:       strconv.FormatInt(userID, 10),
 		},
 	)
 }

@@ -1,8 +1,8 @@
 package broker
 
 import (
-	"github.com/streadway/amqp"
 	"errors"
+	"github.com/streadway/amqp"
 )
 
 type (
@@ -12,7 +12,7 @@ type (
 
 	Channel struct {
 		amqpChannel *amqp.Channel
-		Exchange string
+		Exchange    string
 	}
 )
 

@@ -1,8 +1,8 @@
 package broker
 
 import (
-	"github.com/streadway/amqp"
 	"errors"
+	"github.com/streadway/amqp"
 )
 
 func (ch *Channel) BindQueue(exchangeName, queueName, routingKey string) (amqp.Queue, error) {
@@ -59,7 +59,7 @@ func (ch *Channel) ConsumeMessages(queueName string) (<-chan Delivery, error) {
 	}
 
 	deliveries := make(chan Delivery)
-	go func(){
+	go func() {
 		for m := range messages {
 			logDelivery(m)
 			deliveries <- *NewDelivery(m)
@@ -70,7 +70,7 @@ func (ch *Channel) ConsumeMessages(queueName string) (<-chan Delivery, error) {
 	return (<-chan Delivery)(deliveries), nil
 }
 
-func (ch *Channel)startConsume(queueName string)(<-chan amqp.Delivery, error){
+func (ch *Channel) startConsume(queueName string) (<-chan amqp.Delivery, error) {
 	return ch.amqpChannel.Consume(
 		queueName, // queue
 		"",        // consumer
