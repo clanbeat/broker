@@ -58,13 +58,16 @@ func (ch *Channel) ConsumeMessages(queueName string) (<-chan Delivery, error) {
 		return nil, err
 	}
 
-	d := make(chan Delivery)
-	for m := range messages {
-		logDelivery(m)
-	 	d <- *NewDelivery(m)
-	}
+	deliveries := make(chan Delivery)
+	go func(){
+		for m := range messages {
+			logDelivery(m)
+			deliveries <- *NewDelivery(m)
+		}
+		close(deliveries)
+	}()
 
-	return d, nil
+	return (<-chan Delivery)(deliveries), nil
 }
 
 func (ch *Channel)startConsume(queueName string)(<-chan amqp.Delivery, error){
