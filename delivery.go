@@ -22,6 +22,7 @@ type Delivery struct {
 
    Body []byte
    Err error
+   originalDelivery amqp.Delivery
 }
 
 func NewDelivery(d amqp.Delivery) *Delivery {
@@ -31,6 +32,7 @@ func NewDelivery(d amqp.Delivery) *Delivery {
     userId, err = strconv.ParseInt(d.UserId, 10, 64)
   }
   return &Delivery{
+    originalDelivery: d,
     UserId: userId,
     Err: err,
     ContentType: d.ContentType,
@@ -45,4 +47,16 @@ func NewDelivery(d amqp.Delivery) *Delivery {
     RoutingKey: d.RoutingKey,
     Body: d.Body,
   }
+}
+
+func (d Delivery)Ack(multiple bool) error {
+  return d.originalDelivery.Ack(multiple)
+}
+
+func (d Delivery) Nack(multiple, requeue bool) error {
+  return d.originalDelivery.Nack(multiple, requeue)
+}
+
+func (d Delivery) Reject(requeue bool) error {
+  return d.originalDelivery.Reject(requeue)
 }
