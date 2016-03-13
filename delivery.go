@@ -9,12 +9,12 @@ import (
 type Delivery struct {
 	ContentType     string    // MIME content type
 	ContentEncoding string    // MIME content encoding
-	CorrelationID   string    // application use - correlation identifier
-	MessageID       string    // application use - message identifier
+	CorrelationId   string    // application use - correlation identifier
+	MessageId       string    // application use - message identifier
 	Timestamp       time.Time // application use - message timestamp
 	Type            string    // application use - message type name
-	UserID          int64     // application use - creating user - should be authenticated user
-	AppID           string    // application use - creating application id
+	UserId          int64     // application use - creating user - should be authenticated user
+	AppId           string    // application use - creating application id
 
 	Redelivered bool
 	Exchange    string // basic.publish exhange
@@ -38,14 +38,14 @@ func NewDelivery(d amqp.Delivery) *Delivery {
 
 	return &Delivery{
 		originalDelivery: d,
-		UserID:           userId,
+		UserId:           userId,
 		ContentType:      d.ContentType,
 		ContentEncoding:  d.ContentEncoding,
-		CorrelationID:    d.CorrelationId,
-		MessageID:        d.MessageId,
+		CorrelationId:    d.CorrelationId,
+		MessageId:        d.MessageId,
 		Timestamp:        d.Timestamp,
 		Type:             d.Type,
-		AppID:            d.AppId,
+		AppId:            d.AppId,
 		Redelivered:      d.Redelivered,
 		Exchange:         d.Exchange,
 		RoutingKey:       d.RoutingKey,
