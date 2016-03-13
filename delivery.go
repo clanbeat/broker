@@ -1,8 +1,8 @@
 package broker
 
 import (
+	"encoding/json"
 	"github.com/streadway/amqp"
-	"strconv"
 	"time"
 )
 
@@ -21,20 +21,24 @@ type Delivery struct {
 	RoutingKey  string // basic.publish routing key
 
 	Body             []byte
-	Err              error
 	originalDelivery amqp.Delivery
 }
 
 func NewDelivery(d amqp.Delivery) *Delivery {
 	var userId int64
-	var err error
-	if len(d.UserId) > 0 {
-		userId, err = strconv.ParseInt(d.UserId, 10, 64)
+	var b Body
+
+	data := d.Body
+	if err := json.Unmarshal(d.Body, &b); err == nil {
+		if b.UserID > 0 {
+			userId = b.UserID
+		}
+		data = b.Data
 	}
+
 	return &Delivery{
 		originalDelivery: d,
 		UserId:           userId,
-		Err:              err,
 		ContentType:      d.ContentType,
 		ContentEncoding:  d.ContentEncoding,
 		CorrelationId:    d.CorrelationId,
@@ -45,7 +49,7 @@ func NewDelivery(d amqp.Delivery) *Delivery {
 		Redelivered:      d.Redelivered,
 		Exchange:         d.Exchange,
 		RoutingKey:       d.RoutingKey,
-		Body:             d.Body,
+		Body:             data,
 	}
 }
 
