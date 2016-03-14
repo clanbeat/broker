@@ -26,14 +26,16 @@ type Delivery struct {
 
 func NewDelivery(d amqp.Delivery) *Delivery {
 	var userId int64
-	var b Body
-
 	data := d.Body
-	if err := json.Unmarshal(d.Body, &b); err == nil {
-		if b.UserID > 0 {
-			userId = b.UserID
+
+	if d.Type == messageTypeV2 {
+		var b Body
+		if err := json.Unmarshal(d.Body, &b); err == nil {
+			if b.UserID > 0 {
+				userId = b.UserID
+			}
+			data = b.Data
 		}
-		data = b.Data
 	}
 
 	return &Delivery{

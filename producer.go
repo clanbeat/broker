@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+const messageTypeV1 = "v1"
+const messageTypeV2 = "v2"
+
 type Body struct {
 	Data   json.RawMessage `json:"data"`
 	UserID int64           `json:"userId"`
@@ -18,7 +21,7 @@ func (ch *Channel) Publish(routingKey string, body []byte) error {
 	if err != nil {
 		return err
 	}
-	return ch.publishBody(routingKey, b)
+	return ch.publishBody(routingKey, messageTypeV1, b)
 }
 
 func (ch *Channel) PublishWithUser(routingKey string, userID int64, body []byte) error {
@@ -26,10 +29,10 @@ func (ch *Channel) PublishWithUser(routingKey string, userID int64, body []byte)
 	if err != nil {
 		return err
 	}
-	return ch.publishBody(routingKey, b)
+	return ch.publishBody(routingKey, messageTypeV2, b)
 }
 
-func (ch *Channel) publishBody(routingKey string, body []byte) error {
+func (ch *Channel) publishBody(routingKey, messageType string, body []byte) error {
 	if ch.amqpChannel == nil {
 		return errors.New("rabbitmq connection missing")
 	}
@@ -44,6 +47,7 @@ func (ch *Channel) publishBody(routingKey string, body []byte) error {
 			DeliveryMode: amqp.Persistent,
 			MessageId:    uuid.NewV4().String(),
 			Timestamp:    time.Now(),
+			Type:         messageType,
 		},
 	)
 }
