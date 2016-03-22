@@ -28,14 +28,12 @@ func NewDelivery(d amqp.Delivery) *Delivery {
 	var userId int64
 	data := d.Body
 
-	if d.Type == messageTypeV2 {
-		var b Body
-		if err := json.Unmarshal(d.Body, &b); err == nil {
-			if b.UserID > 0 {
-				userId = b.UserID
-			}
-			data = b.Data
+	var b Body
+	if err := json.Unmarshal(d.Body, &b); err == nil {
+		if b.UserID > 0 {
+			userId = b.UserID
 		}
+		data = b.Data
 	}
 
 	return &Delivery{
