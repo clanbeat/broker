@@ -88,7 +88,7 @@ func (conn *Connection) Close() {
 
 func handleFailures(errs chan *amqp.Error, sendError ErrorTracker) {
 	for e := range errs {
-		log.Printf("connection error: %d %s", e.Code, e.Reason)
+		log.Println("[broker][connection_error]: %d %s", e.Code, e.Reason)
 		sendError(errors.New(e.Error()))
 	}
 }
