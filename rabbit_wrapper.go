@@ -3,11 +3,14 @@ package broker
 import (
 	"errors"
 	"github.com/streadway/amqp"
+	"log"
 )
 
 type (
-	Connection struct {
+	ErrorTracker func(err error)
+	Connection   struct {
 		amqpConnection *amqp.Connection
+		sendError      ErrorTracker
 	}
 
 	Channel struct {
@@ -16,7 +19,7 @@ type (
 	}
 )
 
-func New(rabbitmqURI string) (*Connection, error) {
+func New(rabbitmqURI string, sendError ErrorTracker) (*Connection, error) {
 	c := &Connection{}
 	if len(rabbitmqURI) == 0 {
 		return c, errors.New("rabbitmqURI missing")
@@ -26,6 +29,11 @@ func New(rabbitmqURI string) (*Connection, error) {
 		return c, err
 	}
 	c.amqpConnection = conn
+	c.sendError = sendError
+
+	errs := c.amqpConnection.NotifyClose(make(chan *amqp.Error))
+	go handleFailures(errs, c.sendError)
+
 	return c, nil
 }
 
@@ -40,6 +48,8 @@ func (conn *Connection) NewChannel() (*Channel, error) {
 	}
 	ch.amqpChannel = createdChan
 
+	errs := ch.amqpChannel.NotifyClose(make(chan *amqp.Error))
+	go handleFailures(errs, conn.sendError)
 	return ch, nil
 }
 
@@ -73,5 +83,12 @@ func (ch *Channel) Close() {
 func (conn *Connection) Close() {
 	if conn.amqpConnection != nil {
 		conn.amqpConnection.Close()
+	}
+}
+
+func handleFailures(errs chan *amqp.Error, sendError ErrorTracker) {
+	for e := range errs {
+		log.Printf("connection error: %d %s", e.Code, e.Reason)
+		sendError(errors.New(e.Error()))
 	}
 }
