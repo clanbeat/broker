@@ -2,10 +2,10 @@ package broker
 
 import (
 	"errors"
+	"fmt"
 	"github.com/streadway/amqp"
 	"log"
 	"time"
-	"fmt"
 )
 
 type (

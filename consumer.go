@@ -3,6 +3,7 @@ package broker
 import (
 	"errors"
 	"github.com/streadway/amqp"
+	"log"
 )
 
 type Consumer struct {
@@ -27,6 +28,7 @@ func (ch *Channel) restartConsumers() error {
 
 func (ch *Channel) startConsumer(c *Consumer) error {
 	info := c.Info
+	log.Println("[broker][starting_consumer]", info.QueueName)
 	q, err := ch.BindQueue(info.ExchangeName, info.QueueName, info.RoutingKey)
 	if err != nil {
 		return err

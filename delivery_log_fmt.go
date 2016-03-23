@@ -7,13 +7,12 @@ import (
 )
 
 func Log(d amqp.Delivery) string {
-	return fmt.Sprintf("[broker][%s from %s][%s]: %s", d.Timestamp, d.Exchange, d.RoutingKey, d.MessageId)
+	return fmt.Sprintf("[broker][from %s][%s]: %s", d.Exchange, d.RoutingKey, d.MessageId)
 }
 
 func logDelivery(d amqp.Delivery) {
 	logString := fmt.Sprintf(
-		"[broker][%s from %s][%s]: %s",
-		d.Timestamp,
+		"[broker][from %s][%s]: %s",
 		d.Exchange,
 		d.RoutingKey,
 		d.MessageId)
