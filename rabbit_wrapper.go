@@ -41,9 +41,6 @@ func New(rabbitmqURI string, sendError ErrorTracker) (*Connection, error) {
 	if err := c.connect(); err != nil {
 		return c, err
 	}
-
-	go c.handleFailures(c.amqpConnection.NotifyClose(make(chan *amqp.Error)))
-
 	ch, err := c.NewChannel()
 	if err != nil {
 		return c, err
@@ -57,12 +54,9 @@ func (conn *Connection) NewChannel() (*Channel, error) {
 	if conn.amqpConnection == nil {
 		return ch, errors.New("rabbitmq connection missing")
 	}
-
 	if err := ch.connect(conn); err != nil {
 		return ch, err
 	}
-
-	go conn.handleFailures(ch.amqpChannel.NotifyClose(make(chan *amqp.Error)))
 	return ch, nil
 }
 
@@ -73,6 +67,7 @@ func (c *Connection) connect() error {
 		return err
 	}
 	c.amqpConnection = conn
+	go c.handleFailures(c.amqpConnection.NotifyClose(make(chan *amqp.Error)))
 	return nil
 }
 
@@ -83,6 +78,7 @@ func (ch *Channel) connect(conn *Connection) error {
 		return err
 	}
 	ch.amqpChannel = createdChan
+	go conn.handleFailures(ch.amqpChannel.NotifyClose(make(chan *amqp.Error)))
 	return nil
 }
 
