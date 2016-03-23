@@ -5,6 +5,48 @@ import (
 	"github.com/streadway/amqp"
 )
 
+
+type Consumer struct {
+	Info *ConnectionInfo
+	Callback func(d Delivery)
+}
+
+func (conn *Connection) Register(c *Consumer) error {
+	ch := conn.channel
+	ch.consumers = append(ch.consumers, c)
+	return ch.startConsumer(c)
+}
+
+func (ch *Channel) restartConsumers() error {
+	for _, cons := range ch.consumers {
+		if err := ch.startConsumer(cons); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ch *Channel) startConsumer(c *Consumer) error{
+	info := c.Info
+	q, err := ch.BindQueue(info.ExchangeName, info.QueueName, info.RoutingKey)
+	if err != nil {
+		return err
+	}
+
+	msgs, err := ch.ConsumeMessages(q.Name)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for m := range msgs {
+			c.Callback(m)
+			m.Ack(false)
+		}
+	}()
+	return nil
+}
+
 func (ch *Channel) BindQueue(exchangeName, queueName, routingKey string) (amqp.Queue, error) {
 	var err error
 	var q amqp.Queue

@@ -37,7 +37,7 @@ func (ch *Channel) publishBody(routingKey, messageType string, body []byte) erro
 		return errors.New("rabbitmq connection missing")
 	}
 	return ch.amqpChannel.Publish(
-		ch.Exchange, // exchange
+		ch.exchange, // exchange
 		routingKey,  // routing key
 		false,       // mandatory
 		false,       // immediate

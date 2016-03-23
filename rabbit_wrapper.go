@@ -7,33 +7,46 @@ import (
 )
 
 type (
-	ErrorTracker func(err error)
+	ConnectionInfo struct {
+		ExchangeName string
+		QueueName string
+		RoutingKey string
+	}
+
 	Connection   struct {
+		rabbitURI string
 		amqpConnection *amqp.Connection
 		sendError      ErrorTracker
+		channel *Channel
+		ExistingRetry bool
 	}
 
 	Channel struct {
 		amqpChannel *amqp.Channel
-		Exchange    string
+		exchange    string
+		consumers []*Consumer
 	}
+
+	ErrorTracker func(err error)
 )
 
 func New(rabbitmqURI string, sendError ErrorTracker) (*Connection, error) {
-	c := &Connection{}
 	if len(rabbitmqURI) == 0 {
-		return c, errors.New("rabbitmqURI missing")
+		return nil, errors.New("rabbitmqURI missing")
 	}
-	conn, err := amqp.Dial(rabbitmqURI)
+
+	c := &Connection{sendError: sendError, rabbitURI: rabbitmqURI}
+	if err := c.connect(); err != nil {
+		return c, err
+	}
+
+	go c.handleFailures(c.amqpConnection.NotifyClose(make(chan *amqp.Error)))
+
+	ch, err := c.NewChannel()
 	if err != nil {
 		return c, err
 	}
-	c.amqpConnection = conn
-	c.sendError = sendError
-
-	errs := c.amqpConnection.NotifyClose(make(chan *amqp.Error))
-	go handleFailures(errs, c.sendError)
-
+	c.channel = ch
 	return c, nil
 }
 
@@ -42,16 +55,35 @@ func (conn *Connection) NewChannel() (*Channel, error) {
 	if conn.amqpConnection == nil {
 		return ch, errors.New("rabbitmq connection missing")
 	}
-	createdChan, err := conn.amqpConnection.Channel()
-	if err != nil {
+
+	if err:= ch.connect(conn); err != nil {
 		return ch, err
 	}
-	ch.amqpChannel = createdChan
 
-	errs := ch.amqpChannel.NotifyClose(make(chan *amqp.Error))
-	go handleFailures(errs, conn.sendError)
+	go conn.handleFailures(ch.amqpChannel.NotifyClose(make(chan *amqp.Error)))
 	return ch, nil
 }
+
+func (c *Connection) connect() error {
+	c.Close()
+	conn, err := amqp.Dial(c.rabbitURI)
+	if err != nil {
+		return err
+	}
+	c.amqpConnection = conn
+	return nil
+}
+
+func (ch *Channel) connect(conn *Connection) error {
+	ch.Close()
+	createdChan, err := conn.amqpConnection.Channel()
+	if err != nil {
+		return err
+	}
+	ch.amqpChannel = createdChan
+	return nil
+}
+
 
 func (ch *Channel) ExchangeDeclare(exchangeName string) error {
 	if ch.amqpChannel == nil {
@@ -70,8 +102,37 @@ func (ch *Channel) ExchangeDeclare(exchangeName string) error {
 	if err != nil {
 		return err
 	}
-	ch.Exchange = exchangeName
+	ch.exchange = exchangeName
 	return nil
+}
+
+func (c *Connection)handleFailures(errs chan *amqp.Error) {
+	for e := range errs {
+		if c.ExistingRetry == true {
+			return
+		}
+		c.ExistingRetry = true
+		log.Println(fmt.Sprintf("[broker][connection_error]: %d %s", e.Code, e.Reason, "server side:", e.Server, "recoverable:", e.Recover))
+		c.sendError(errors.New(e.Error()))
+		c.Reset()
+	}
+}
+
+func (c *Connection)Reset() {
+	resetInSeconds := 5 * time.Second
+
+loop:
+	for {
+		log.Println("[broker][retry_connection] in", resetInSeconds, "seconds")
+		if err := c.reConnect(); err != nil {
+			log.Println("[broker][retry_error]", err)
+		} else {
+			break loop
+		}
+		time.Sleep(resetInSeconds)
+		resetInSeconds += (2 * time.Second)
+	}
+	log.Println("[broker][reconnected_successfully]")
 }
 
 func (ch *Channel) Close() {
@@ -86,9 +147,16 @@ func (conn *Connection) Close() {
 	}
 }
 
-func handleFailures(errs chan *amqp.Error, sendError ErrorTracker) {
-	for e := range errs {
-		log.Println("[broker][connection_error]: %d %s", e.Code, e.Reason, "server side:", e.Server, "recoverable:", e.Recover)
-		sendError(errors.New(e.Error()))
+func (c *Connection)reConnect() error{
+	if err := c.connect(); err != nil {
+		return err
 	}
+	if err := c.channel.connect(c); err != nil {
+		return err
+	}
+	if err := c.channel.restartConsumers(); err != nil {
+		return err
+	}
+	c.ExistingRetry = false
+	return nil
 }
