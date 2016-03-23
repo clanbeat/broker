@@ -5,9 +5,8 @@ import (
 	"github.com/streadway/amqp"
 )
 
-
 type Consumer struct {
-	Info *ConnectionInfo
+	Info     *ConnectionInfo
 	Callback func(d Delivery)
 }
 
@@ -26,7 +25,7 @@ func (ch *Channel) restartConsumers() error {
 	return nil
 }
 
-func (ch *Channel) startConsumer(c *Consumer) error{
+func (ch *Channel) startConsumer(c *Consumer) error {
 	info := c.Info
 	q, err := ch.BindQueue(info.ExchangeName, info.QueueName, info.RoutingKey)
 	if err != nil {

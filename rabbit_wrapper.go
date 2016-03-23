@@ -4,27 +4,29 @@ import (
 	"errors"
 	"github.com/streadway/amqp"
 	"log"
+	"time"
+	"fmt"
 )
 
 type (
 	ConnectionInfo struct {
 		ExchangeName string
-		QueueName string
-		RoutingKey string
+		QueueName    string
+		RoutingKey   string
 	}
 
-	Connection   struct {
-		rabbitURI string
+	Connection struct {
+		rabbitURI      string
 		amqpConnection *amqp.Connection
 		sendError      ErrorTracker
-		channel *Channel
-		ExistingRetry bool
+		channel        *Channel
+		ExistingRetry  bool
 	}
 
 	Channel struct {
 		amqpChannel *amqp.Channel
 		exchange    string
-		consumers []*Consumer
+		consumers   []*Consumer
 	}
 
 	ErrorTracker func(err error)
@@ -56,7 +58,7 @@ func (conn *Connection) NewChannel() (*Channel, error) {
 		return ch, errors.New("rabbitmq connection missing")
 	}
 
-	if err:= ch.connect(conn); err != nil {
+	if err := ch.connect(conn); err != nil {
 		return ch, err
 	}
 
@@ -84,7 +86,6 @@ func (ch *Channel) connect(conn *Connection) error {
 	return nil
 }
 
-
 func (ch *Channel) ExchangeDeclare(exchangeName string) error {
 	if ch.amqpChannel == nil {
 		return errors.New("rabbitmq connection missing")
@@ -106,7 +107,7 @@ func (ch *Channel) ExchangeDeclare(exchangeName string) error {
 	return nil
 }
 
-func (c *Connection)handleFailures(errs chan *amqp.Error) {
+func (c *Connection) handleFailures(errs chan *amqp.Error) {
 	for e := range errs {
 		if c.ExistingRetry == true {
 			return
@@ -118,7 +119,7 @@ func (c *Connection)handleFailures(errs chan *amqp.Error) {
 	}
 }
 
-func (c *Connection)Reset() {
+func (c *Connection) Reset() {
 	resetInSeconds := 5 * time.Second
 
 loop:
@@ -147,7 +148,7 @@ func (conn *Connection) Close() {
 	}
 }
 
-func (c *Connection)reConnect() error{
+func (c *Connection) reConnect() error {
 	if err := c.connect(); err != nil {
 		return err
 	}
