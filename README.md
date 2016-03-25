@@ -8,9 +8,10 @@ Clone the repository to your go workspace
 
 	$ git clone git@github.com:clanbeat/broker.git
 
-## Example
+## Producer example
 
-Sending data to a topic exchange
+Sending data to a topic exchange.
+
 
 ```go
   package main
@@ -22,30 +23,78 @@ Sending data to a topic exchange
 
   func main() {
     //set up broker connection
-  	brokerConn, err := broker.New(os.Getenv("RABBITMQ_URI"))
-  	if err != nil {
-  		log.Fatal(err)
-  	}
+		messageChannel, err = broker.New(os.Getenv("CLOUDAMQP_URL"), errorTrackerFunc())
+		if err != nil {
+			errorTracker.Error(err)
+		}
 
-    //set up channel
-  	messageChannel, err := brokerConn.NewChannel()
-    if err != nil {
-  		log.Fatal(err)
-  	}
+		//declare exchange once if you start pushing messages
+		if err := messageChannel.ExchangeDeclare("myExchange"); err != nil {
+			errorTracker.Error(err)
+		}
+		defer messageChannel.Close()
 
-    //define channel for producing messages
-  	if err = messageChannel.ExchangeDeclare(apiExchange); err != nil {
-  		log.Fatal(err)
-  	}
 
     message := map[string]string{"from": "someone", "content": "Hello!"}
 
-    if err := messageChannel.Publish("model.event", json.Marshal(message)); err != nil {
+		producer := &broker.Producer{
+			Info: &broker.ConnectionInfo{
+				ExchangeName: "myExchange",
+				RoutingKey:   "model.event.created",
+			},
+			Data: json.Marshal(message),
+		}
+
+    if err := messageChannel.Publish(producer); err != nil {
       log.Println(err)
     }
-
-
-  	defer messageChannel.Close()
-  	defer brokerConn.Close()
   }
+```
+
+## Consumer example
+
+Consuming data from an exchange
+
+```go
+  package main
+
+  import (
+    "encoding/json"
+  	"github.com/clanbeat/broker"
+  )
+
+  func main() {
+    //set up broker connection
+		messageChannel, err = broker.New(os.Getenv("CLOUDAMQP_URL"), errorTrackerFunc())
+		if err != nil {
+			errorTracker.Error(err)
+		}
+
+		//declare exchange once if you start pushing messages
+		if err := messageChannel.ExchangeDeclare("myExchange"); err != nil {
+			errorTracker.Error(err)
+		}
+		defer messageChannel.Close()
+		registerBrokerHandler()
+  }
+
+	func registerBrokerHandler() {
+		consumer := &broker.Consumer{
+			Info: &broker.ConnectionInfo{
+				ExchangeName: "myExchange",
+				QueueName:    "receiving_model_events",
+				RoutingKey:   "model.event.#",
+			},
+			Callback: messageHandler(),
+		}
+		brokerConn.Register(consumer)
+	}
+
+
+	func messageHandler() func(msg broker.Delivery) {
+		return func(msg broker.Delivery) {
+			log.Println(msg)
+		}
+	}
+
 ```
