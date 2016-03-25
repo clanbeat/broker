@@ -16,31 +16,42 @@ type Body struct {
 	UserID int64           `json:"userId"`
 }
 
-func (ch *Channel) Publish(routingKey string, body []byte) error {
-	b, err := json.Marshal(&Body{Data: body})
-	if err != nil {
-		return err
-	}
-	return ch.publishBody(routingKey, messageTypeV1, b)
+type Producer struct {
+	Info   *ConnectionInfo
+	Data   []byte
+	UserID int64
 }
 
-func (ch *Channel) PublishWithUser(routingKey string, userID int64, body []byte) error {
-	b, err := json.Marshal(&Body{UserID: userID, Data: body})
-	if err != nil {
-		return err
+func (c *Connection) Publish(p *Producer) error {
+	if c.channel == nil {
+		return errors.New("no message channel defined")
 	}
-	return ch.publishBody(routingKey, messageTypeV2, b)
+	if p.Info == nil {
+		return errors.New("exchange info missing")
+	}
+	return c.channel.publishBody(*p.Info, &Body{UserID: p.UserID, Data: p.Data})
 }
 
-func (ch *Channel) publishBody(routingKey, messageType string, body []byte) error {
+func (ch *Channel) publishBody(info ConnectionInfo, b *Body) error {
 	if ch.amqpChannel == nil {
 		return errors.New("rabbitmq connection missing")
 	}
+
+	messageType := messageTypeV1
+	if b.UserID > 0 {
+		messageType = messageTypeV2
+	}
+
+	body, err := json.Marshal(&b)
+	if err != nil {
+		return err
+	}
+
 	return ch.amqpChannel.Publish(
-		ch.exchange, // exchange
-		routingKey,  // routing key
-		false,       // mandatory
-		false,       // immediate
+		info.ExchangeName, // exchange
+		info.RoutingKey,   // routing key
+		false,             // mandatory
+		false,             // immediate
 		amqp.Publishing{
 			ContentType:  "application/json",
 			Body:         body,

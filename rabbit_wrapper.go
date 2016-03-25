@@ -25,7 +25,6 @@ type (
 
 	Channel struct {
 		amqpChannel *amqp.Channel
-		exchange    string
 		consumers   []*Consumer
 	}
 
@@ -41,7 +40,7 @@ func New(rabbitmqURI string, sendError ErrorTracker) (*Connection, error) {
 	if err := c.connect(); err != nil {
 		return c, err
 	}
-	ch, err := c.NewChannel()
+	ch, err := c.newChannel()
 	if err != nil {
 		return c, err
 	}
@@ -49,7 +48,7 @@ func New(rabbitmqURI string, sendError ErrorTracker) (*Connection, error) {
 	return c, nil
 }
 
-func (conn *Connection) NewChannel() (*Channel, error) {
+func (conn *Connection) newChannel() (*Channel, error) {
 	ch := &Channel{}
 	if conn.amqpConnection == nil {
 		return ch, errors.New("rabbitmq connection missing")
@@ -82,7 +81,14 @@ func (ch *Channel) connect(conn *Connection) error {
 	return nil
 }
 
-func (ch *Channel) ExchangeDeclare(exchangeName string) error {
+func (c *Connection) ExchangeDeclare(exchangeName string) error {
+	if c.channel == nil {
+		return errors.New("no message channel defined")
+	}
+	return c.channel.exchangeDeclare(exchangeName)
+}
+
+func (ch *Channel) exchangeDeclare(exchangeName string) error {
 	if ch.amqpChannel == nil {
 		return errors.New("rabbitmq connection missing")
 	}
@@ -99,7 +105,6 @@ func (ch *Channel) ExchangeDeclare(exchangeName string) error {
 	if err != nil {
 		return err
 	}
-	ch.exchange = exchangeName
 	return nil
 }
 
@@ -110,13 +115,12 @@ func (c *Connection) handleFailures(errs chan *amqp.Error) {
 		}
 		c.ExistingRetry = true
 		log.Println(fmt.Sprintf("[broker][connection_error]: %d %s", e.Code, e.Reason, "server side:", e.Server, "recoverable:", e.Recover))
-		c.sendError(errors.New(e.Error()))
 		c.Reset()
 	}
 }
 
 func (c *Connection) Reset() {
-	resetInSeconds := 5 * time.Second
+	resetInSeconds := 1 * time.Second
 
 loop:
 	for {
@@ -127,7 +131,12 @@ loop:
 			break loop
 		}
 		time.Sleep(resetInSeconds)
-		resetInSeconds += (2 * time.Second)
+		if resetInSeconds >= 5*time.Second {
+			c.sendError(errors.New("couldn't connect to rabbitmq in 3 tries"))
+			resetInSeconds = 1 * time.Second
+		} else {
+			resetInSeconds += (2 * time.Second)
+		}
 	}
 	log.Println("[broker][reconnected_successfully]")
 }

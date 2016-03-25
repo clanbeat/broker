@@ -28,6 +28,9 @@ func (ch *Channel) restartConsumers() error {
 
 func (ch *Channel) startConsumer(c *Consumer) error {
 	info := c.Info
+	if info == nil {
+		return errors.New("binding info missing")
+	}
 	log.Println("[broker][starting_consumer]", info.QueueName)
 	q, err := ch.BindQueue(info.ExchangeName, info.QueueName, info.RoutingKey)
 	if err != nil {
@@ -56,7 +59,7 @@ func (ch *Channel) BindQueue(exchangeName, queueName, routingKey string) (amqp.Q
 		return q, errors.New("rabbitmq connection missing")
 	}
 
-	err = ch.ExchangeDeclare(exchangeName)
+	err = ch.exchangeDeclare(exchangeName)
 	if err != nil {
 		return q, err
 	}
